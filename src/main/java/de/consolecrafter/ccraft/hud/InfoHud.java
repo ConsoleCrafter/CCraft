@@ -43,7 +43,7 @@ public final class InfoHud {
     public static void extract(GuiGraphicsExtractor g, DeltaTracker deltaTracker) {
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
-        if (player == null || minecraft.level == null || minecraft.options.hideGui) return;
+        if (player == null || minecraft.level == null || minecraft.gui.hud.isHidden()) return;
 
         int top = 2 + Logos.draw(g, 2, 2, LOGO_WIDTH) + 2;
         List<Component> lines = lines(minecraft, player);
