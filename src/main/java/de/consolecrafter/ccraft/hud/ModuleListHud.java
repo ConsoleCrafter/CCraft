@@ -17,7 +17,7 @@ public final class ModuleListHud {
 
     public static void extract(GuiGraphicsExtractor g, DeltaTracker deltaTracker) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || minecraft.options.hideGui) return;
+        if (minecraft.player == null || minecraft.gui.hud.isHidden()) return;
 
         int right = g.guiWidth() - MARGIN;
         int y = MARGIN + 4;
