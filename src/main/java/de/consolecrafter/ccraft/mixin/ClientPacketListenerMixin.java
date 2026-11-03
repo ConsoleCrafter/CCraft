@@ -21,7 +21,7 @@ public abstract class ClientPacketListenerMixin {
 
     @Inject(method = "handleParticleEvent", at = @At(value = "INVOKE", target = ON_MAIN_THREAD, shift = At.Shift.AFTER), cancellable = true)
     private void ccraft$filterParticles(ClientboundLevelParticlesPacket packet, CallbackInfo ci) {
-        if (ModuleManager.ANTI_PARTICLE_CRASH.shouldDropParticles(packet.getCount(), packet.getXDist(), packet.getYDist(), packet.getZDist())) {
+        if (ModuleManager.ANTI_PARTICLE_CRASH.shouldDropParticles()) {
             ci.cancel();
         }
     }
