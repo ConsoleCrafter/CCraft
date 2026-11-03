@@ -1,0 +1,117 @@
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath 'com.guardsquare:proguard-gradle:7.5.0'
+	}
+}
+
+plugins {
+	id 'fabric-loom' version '1.15.4'
+	id 'maven-publish'
+	id 'java'
+}
+version = project.mod_version
+group = project.maven_group
+base {
+	archivesName = project.archives_base_name
+}
+repositories {
+	maven {
+		name = "Fabric"
+		url = "https://maven.fabricmc.net/"
+	}
+	maven {
+		name = "ViaVersion"
+		url = "https://repo.viaversion.com"
+	}
+	maven {
+		name = "Lenni0451 (ViaVersion Mirror)"
+		url = "https://maven.lenni0451.net/everything"
+	}
+	maven {
+		name = "Cloudburst"
+		url = "https://repo.opencollab.dev/maven-snapshots/"
+	}
+	maven {
+		name = "Cloudburst Releases"
+		url = "https://repo.opencollab.dev/maven-releases/"
+	}
+	maven {
+		name = "JitPack"
+		url = "https://jitpack.io"
+	}
+	mavenCentral()
+}
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+	modImplementation include("com.viaversion:viafabricplus:4.3.6")
+
+	implementation include('at.favre.lib:bcrypt:0.10.2')
+	implementation include('at.favre.lib:bytes:1.6.1')
+}
+processResources {
+	inputs.property "version", project.version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": project.version
+	}
+}
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+}
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+jar {
+	from("LICENSE") {
+		rename { "${it}_${project.base.archivesName.get()}" }
+	}
+	into('META-INF/jars') {
+		from('libs/account-switcher.jar')
+		from('libs/sodium.jar')
+		from('libs/iris.jar')
+		from('libs/ferritecore.jar')
+		from('libs/lithium.jar')
+		from('libs/exploitpreventer.jar')
+		from('libs/modmenu.jar')
+	}
+}
+
+// ============================================================
+// ProGuard: obfuskiert den fertig gemappten (remapped) Jar.
+// Läuft NICHT automatisch bei build/remapJar, sondern als eigener
+// Task "obfuscate" — so bleibt dein normaler Dev-Workflow unberührt
+// und du obfuskierst nur bewusst für Releases an deine Freunde.
+// ============================================================
+configurations {
+	proguardLibs
+}
+
+dependencies {
+	// Minecraft-Jar + Loader + API als "Library" für ProGuard bereitstellen,
+	// damit es weiß, was extern ist und NICHT umbenannt werden darf.
+	proguardLibs "com.mojang:minecraft:${project.minecraft_version}"
+	proguardLibs "net.fabricmc:fabric-loader:${project.loader_version}"
+}
+
+tasks.register('obfuscate', proguard.gradle.ProGuardTask) {
+	dependsOn remapJar
+	group = 'build'
+	description = 'Obfuskiert den remapped Mod-Jar mit ProGuard.'
+
+	injars remapJar.archiveFile.get().asFile
+	outjars layout.buildDirectory.file("libs/${project.base.archivesName.get()}-${version}-obf.jar").get().asFile
+
+	libraryjars configurations.proguardLibs
+	libraryjars "${System.getProperty('java.home')}/jmods"
+
+	configuration file('proguard-rules.pro')
+}

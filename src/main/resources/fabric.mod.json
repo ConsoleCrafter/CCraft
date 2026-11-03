@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "id": "ccraft",
+  "version": "${version}",
+  "name": "CCraft",
+  "description": "CCraft Client (mod)",
+  "authors": [
+    "ConsoleCrafter"
+  ],
+  "contact": {
+    "homepage": "https://github.com/consolecrafter/ccraft",
+    "sources": "https://github.com/consolecrafter/ccraft"
+  },
+  "license": "MIT",
+  "icon": "assets/ccraft/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "de.consolecrafter.ccraft.CCraftMod"
+    ]
+  },
+  "mixins": [
+    "ccraft.mixins.json"
+  ],
+  "jars": [
+    {
+      "file": "META-INF/jars/account-switcher.jar"
+    },
+    {
+      "file": "META-INF/jars/sodium.jar"
+    },
+    {
+      "file": "META-INF/jars/iris.jar"
+    },
+    {
+      "file": "META-INF/jars/ferritecore.jar"
+    },
+    {
+      "file": "META-INF/jars/lithium.jar"
+    },
+    {
+      "file": "META-INF/jars/modmenu.jar"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.17.0",
+    "minecraft": "~1.21.10",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
