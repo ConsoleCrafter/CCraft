@@ -1,0 +1,8 @@
+CCraft Custom Font pack
+
+The ASCII font atlas in assets/minecraft/textures/font/ascii.png is from
+https://github.com/iZeStudios/iZeMod/ (src/main/resources/assets/minecraft/textures/font/ascii.png).
+
+The iZeMod repository is licensed under GNU GPL version 3. The atlas is included
+as a separate optional resource-pack asset; see the upstream repository for the
+license terms and source.
