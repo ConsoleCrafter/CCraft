@@ -25,7 +25,7 @@ public final class KeystrokesHud {
     public static void extract(GuiGraphicsExtractor g, DeltaTracker deltaTracker) {
         ClientConfig config = ClientConfig.get();
         Minecraft minecraft = Minecraft.getInstance();
-        if (!config.keystrokes || minecraft.options.hideGui) return;
+        if (!config.keystrokes || minecraft.gui.hud.isHidden()) return;
 
         Options options = minecraft.options;
         boolean left = options.keyAttack.isDown();
