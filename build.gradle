@@ -1,0 +1,61 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Modrinth'
+				url = 'https://api.modrinth.com/maven'
+			}
+		}
+		filter {
+			includeGroup 'maven.modrinth'
+		}
+	}
+	mavenCentral()
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	implementation include("at.favre.lib:bcrypt:${project.bcrypt_version}")
+	implementation include("at.favre.lib:bytes:${project.bytes_version}")
+
+	include "maven.modrinth:sodium:${project.sodium_version}"
+	include "maven.modrinth:lithium:${project.lithium_version}"
+	include "maven.modrinth:iris:${project.iris_version}"
+	include "maven.modrinth:modmenu:${project.modmenu_version}"
+}
+
+processResources {
+	def props = [
+			version          : project.version,
+			minecraft_version: project.minecraft_version,
+			loader_version   : project.loader_version
+	]
+	inputs.properties props
+	filesMatching('fabric.mod.json') {
+		expand props
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}

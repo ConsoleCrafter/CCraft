@@ -1,0 +1,24 @@
+{
+  "required": true,
+  "package": "de.consolecrafter.ccraft.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "AbstractButtonMixin",
+    "BrandPayloadMixin",
+    "CameraMixin",
+    "ClientboundExplodePacketMixin",
+    "ClientPacketListenerMixin",
+    "ConnectScreenMixin",
+    "DisconnectedScreenMixin",
+    "LightmapMixin",
+    "MinecraftAccessor",
+    "MinecraftMixin",
+    "OnlineServerEntryMixin",
+    "ScreenMixin",
+    "StringDecomposerMixin",
+    "TitleScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

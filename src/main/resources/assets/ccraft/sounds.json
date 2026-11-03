@@ -1,0 +1,12 @@
+{
+  "tetris1": {
+    "sounds": [
+      "ccraft:tetris1"
+    ]
+  },
+  "tetris2": {
+    "sounds": [
+      "ccraft:tetris2"
+    ]
+  }
+}
