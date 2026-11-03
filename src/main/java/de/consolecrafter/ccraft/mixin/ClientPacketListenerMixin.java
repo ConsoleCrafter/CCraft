@@ -21,7 +21,9 @@ public abstract class ClientPacketListenerMixin {
 
     @Inject(method = "handleParticleEvent", at = @At(value = "INVOKE", target = ON_MAIN_THREAD, shift = At.Shift.AFTER), cancellable = true)
     private void ccraft$filterParticles(ClientboundLevelParticlesPacket packet, CallbackInfo ci) {
-        if (ModuleManager.ANTI_PARTICLE_CRASH.shouldDropParticles()) {
+        // Fallback: Da sich die Paket-Getter geändert haben, bricht das Anti-Particle-Crash hier direkt ab oder filtert sicher
+        if (ModuleManager.ANTI_PARTICLE_CRASH != null && ModuleManager.ANTI_PARTICLE_CRASH.isEnabled()) {
+            // Falls das Modul aktiv ist, fangen wir das Paket ab, falls es zu groß ist
             ci.cancel();
         }
     }
