@@ -1,192 +1,250 @@
 package de.consolecrafter.ccraft.gui;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
 import de.consolecrafter.ccraft.CCraftMod;
-import de.consolecrafter.ccraft.config.ClientConfig;
-import de.consolecrafter.ccraft.feature.AccountStore;
-import de.consolecrafter.ccraft.hud.Logos;
+import de.consolecrafter.ccraft.util.AccountStore;
+import de.consolecrafter.ccraft.util.CraftConfig;
 import de.consolecrafter.ccraft.util.Theme;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Style;
-import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.text.OrderedText;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 
-import java.util.Random;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
-public final class LoginScreen extends Screen {
+public class LoginScreen extends Screen {
+    public static final LoginScreen INSTANCE = new LoginScreen();
+    public static boolean loggedIn = false;
 
-    private static boolean loggedIn;
+    private static final Identifier CCRAFT_LOGO = Identifier.of("ccraft", "textures/gui/ccraft_logo.png");
+    private static final int LOGO_WIDTH  = 120;
+    private static final int LOGO_HEIGHT = 61;
 
-    private static final int LOGO_WIDTH = 120;
+    private TextFieldWidget nameField;
+    private TextFieldWidget passwordField;
+    private String errorMessage = "";
+    private volatile boolean busy = false;
+
+    // Eingaben überleben Fenstergröße-/Vollbild-Wechsel (init() wird dabei neu
+    // aufgerufen und würde die Felder sonst zurücksetzen).
+    private String draftName = "";
+    private String draftPass = "";
+
+    // Panel-Geometrie (im init berechnet, im render wiederverwendet)
+    private int panelX, panelY, panelW, panelH;
+    private int fieldX, nameY, passY, btnY, errY;
+    private int logoY;
+
+    // Schwebende Partikel im Hintergrund
     private static final int PARTICLES = 40;
-
-    private final Random random = new Random();
     private final float[] px = new float[PARTICLES];
     private final float[] py = new float[PARTICLES];
     private final float[] pvx = new float[PARTICLES];
     private final float[] pvy = new float[PARTICLES];
-    private final int[] psize = new int[PARTICLES];
-    private boolean particlesReady;
+    private final float[] psize = new float[PARTICLES];
+    private boolean particlesInit = false;
 
-    private EditBox nameField;
-    private EditBox passwordField;
-    private String draftName = "";
-    private String draftPassword = "";
-    private String message = "";
-    private volatile boolean busy;
-
-    private int panelX;
-    private int panelY;
-    private int panelW;
-    private int fieldX;
-    private int nameY;
-    private int passwordY;
-    private int buttonY;
-    private int logoY;
-
-    public LoginScreen() {
-        super(Component.literal("Login"));
+    private LoginScreen() {
+        super(Text.literal("Login"));
     }
 
-    public static boolean isLoggedIn() {
-        return loggedIn;
+    private void initParticles() {
+        for (int i = 0; i < PARTICLES; i++) {
+            px[i] = (float) (Math.random() * this.width);
+            py[i] = (float) (Math.random() * this.height);
+            pvx[i] = (float) (Math.random() * 0.6 - 0.3);
+            pvy[i] = (float) (-0.2 - Math.random() * 0.6);
+            psize[i] = 1f + (float) (Math.random() * 2.5);
+        }
+        particlesInit = true;
     }
 
     @Override
     protected void init() {
-        if (!particlesReady) resetParticles();
+        super.init();
+        if (!particlesInit || this.width == 0) initParticles();
 
-        int cx = width / 2;
-        int logoH = Logos.heightFor(LOGO_WIDTH);
-        int panelH = 172;
-        panelW = Math.min(260, width - 40);
-        logoY = Math.max(6, (height - (logoH + 26 + panelH + 34)) / 2);
-        panelY = logoY + logoH + 10;
+        final int cx = this.width / 2;
+
+        // Auf kleine Fenster (z.B. 854x480) begrenzen, damit nichts abgeschnitten wird.
+        panelW = Math.min(260, this.width - 40);
+        panelH = 172;
+
+        int topMargin = 6;
+        int logoBlockH = LOGO_HEIGHT + 26; // Logo + Titel + Trennlinie
+        int availableTop = Math.max(topMargin, (this.height - (logoBlockH + panelH + 34)) / 2);
+        logoY = availableTop;
+        panelY = logoY + LOGO_HEIGHT + 10;
+
         panelX = cx - panelW / 2;
         fieldX = panelX + 20;
+
         nameY = panelY + 42;
-        passwordY = panelY + 84;
-        buttonY = panelY + 122;
+        passY = panelY + 84;
+        btnY  = panelY + 122;
+        errY  = btnY + 48;
 
-        ClientConfig config = ClientConfig.get();
-        nameField = new EditBox(font, fieldX, nameY, panelW - 40, 20, Component.literal("Name"));
+        nameField = new TextFieldWidget(
+                this.textRenderer, fieldX, nameY, panelW - 40, 20, Text.literal("Name"));
         nameField.setMaxLength(50);
-        nameField.setHint(Component.literal("Name"));
-        nameField.setValue(!draftName.isEmpty() ? draftName : config.saveLogin ? config.savedUser : "");
-        nameField.setResponder(value -> draftName = value);
-        addRenderableWidget(nameField);
+        nameField.setPlaceholder(Text.literal("Name"));
+        if (!draftName.isEmpty()) {
+            nameField.setText(draftName);
+        } else if (CraftConfig.saveLogin && !CraftConfig.savedUser.isEmpty()) {
+            nameField.setText(CraftConfig.savedUser);
+        }
+        this.addDrawableChild(nameField);
 
-        passwordField = new EditBox(font, fieldX, passwordY, panelW - 40, 20, Component.literal("Passwort"));
+        passwordField = new TextFieldWidget(
+                this.textRenderer, fieldX, passY, panelW - 40, 20, Text.literal("Passwort"));
         passwordField.setMaxLength(50);
-        passwordField.setHint(Component.literal("Passwort"));
-        passwordField.setValue(draftPassword);
-        passwordField.setResponder(value -> draftPassword = value);
-        passwordField.addFormatter((text, start) -> FormattedCharSequence.forward("•".repeat(text.length()), Style.EMPTY));
-        addRenderableWidget(passwordField);
+        passwordField.setPlaceholder(Text.literal("Passwort"));
+        passwordField.setText(draftPass);
+        // Passwort als Punkte maskieren (Vanilla-Weg).
+        passwordField.addFormatter((text, firstChar) ->
+                OrderedText.styledForwardsVisitedString("•".repeat(text.length()), net.minecraft.text.Style.EMPTY));
+        this.addDrawableChild(passwordField);
 
-        int half = (panelW - 44) / 2;
-        addRenderableWidget(Button.builder(Component.literal("Login"), b -> attemptLogin())
-                .bounds(fieldX, buttonY, half, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Beenden"), b -> minecraft.stop())
-                .bounds(fieldX + half + 4, buttonY, half, 20).build());
-        addRenderableWidget(Button.builder(
-                        Component.literal("Merken: " + (config.saveLogin ? "an" : "aus")), b -> {
-                            config.saveLogin = !config.saveLogin;
-                            if (!config.saveLogin) config.savedUser = "";
-                            ClientConfig.save();
-                            rebuildWidgets();
-                        })
-                .bounds(fieldX, buttonY + 24, panelW - 40, 16).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Login"), b -> attemptLogin())
+                .position(fieldX, btnY).size((panelW - 44) / 2, 20).build());
 
-        setInitialFocus(nameField.getValue().isEmpty() ? nameField : passwordField);
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Beenden"), b ->
+                MinecraftClient.getInstance().stop())
+                .position(fieldX + (panelW - 44) / 2 + 4, btnY)
+                .size((panelW - 44) / 2, 20).build());
+
+        this.addDrawableChild(ButtonWidget.builder(
+                Text.literal("Merken: " + (CraftConfig.saveLogin ? "an" : "aus")), b -> {
+            CraftConfig.saveLogin = !CraftConfig.saveLogin;
+            if (!CraftConfig.saveLogin) CraftConfig.savedUser = "";
+            CraftConfig.save();
+            this.clearAndInit();
+        }).position(fieldX, btnY + 24).size(panelW - 40, 16).build());
     }
 
     private void attemptLogin() {
         if (busy) return;
-        String username = nameField.getValue().trim();
-        char[] password = passwordField.getValue().toCharArray();
+
+        final String username = nameField.getText().trim();
+        final char[] password = passwordField.getText().toCharArray();
+
         if (username.isEmpty() || password.length == 0) {
-            message = "Bitte fülle alle Felder aus!";
+            errorMessage = "Bitte fülle alle Felder aus!";
             return;
         }
-        busy = true;
-        message = "Prüfe...";
-        AccountStore.verify(username, password).whenComplete((ok, error) -> Minecraft.getInstance().execute(() -> {
-            busy = false;
-            if (error != null) {
-                CCraftMod.LOGGER.warn("Login request failed", error);
-                message = "Server nicht erreichbar!";
-                return;
-            }
-            if (!ok) {
-                message = "Falscher Benutzername oder Passwort!";
-                return;
-            }
-            loggedIn = true;
-            ClientConfig config = ClientConfig.get();
-            config.savedUser = config.saveLogin ? username : "";
-            ClientConfig.save();
-            minecraft.gui.setScreen(new MainMenuScreen());
-        }));
-    }
 
-    private void resetParticles() {
-        for (int i = 0; i < PARTICLES; i++) {
-            px[i] = random.nextFloat() * Math.max(1, width);
-            py[i] = random.nextFloat() * Math.max(1, height);
-            pvx[i] = random.nextFloat() * 0.6f - 0.3f;
-            pvy[i] = -0.2f - random.nextFloat() * 0.6f;
-            psize[i] = 1 + random.nextInt(3);
+        busy = true;
+        errorMessage = "Prüfe...";
+
+        CompletableFuture<Map<String, String>> request;
+        try {
+            request = AccountStore.fetch();
+        } catch (Throwable t) {
+            // fetch() kann schon beim Aufbau der Anfrage werfen (z. B. defekte
+            // URL). Ohne dieses catch bliebe busy=true stehen und der
+            // Login-Button waere dauerhaft gesperrt.
+            CCraftMod.LOGGER.warn("Login-Anfrage konnte nicht gestartet werden.", t);
+            busy = false;
+            errorMessage = "Server nicht erreichbar!";
+            return;
         }
-        particlesReady = true;
+
+        request
+                .thenApplyAsync(accounts -> {
+                    String hash = accounts.get(username);
+                    return hash != null && BCrypt.verifyer().verify(password, hash).verified;
+                })
+                .whenComplete((ok, err) -> MinecraftClient.getInstance().execute(() -> {
+                    busy = false;
+                    if (err != null) {
+                        errorMessage = "Server nicht erreichbar!";
+                    } else if (ok) {
+                        loggedIn = true;
+                        errorMessage = "";
+                        draftName = "";
+                        draftPass = "";
+                        CraftConfig.savedUser = CraftConfig.saveLogin ? username : "";
+                        CraftConfig.save();
+                        MinecraftClient.getInstance().setScreen(new CustomMainMenuScreen());
+                    } else {
+                        errorMessage = "Falscher Benutzername oder Passwort!";
+                    }
+                }));
     }
 
     @Override
-    public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
-        Theme.background(g, width, height);
-        int particleColor = Theme.alpha(0x66, Theme.ACCENT);
+    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        // Eingaben vor dem Zeichnen sichern (überlebt Fenster-/Vollbild-Wechsel).
+        if (nameField != null) draftName = nameField.getText();
+        if (passwordField != null) draftPass = passwordField.getText();
+
+        drawParticles(context);
+        drawGlow(context);
+
+        // Panel ZUERST zeichnen, damit Felder und Buttons darüber liegen.
+        Theme.panel(context, panelX, panelY, panelW, panelH);
+        context.fill(panelX + 1, panelY + 1, panelX + panelW - 1, panelY + 3, Theme.ACCENT);
+
+        // Logo + Titel über dem Panel
+        int cx = this.width / 2;
+        context.drawTexture(RenderPipelines.GUI_TEXTURED, CCRAFT_LOGO,
+                cx - LOGO_WIDTH / 2, logoY,
+                0, 0, LOGO_WIDTH, LOGO_HEIGHT, LOGO_WIDTH, LOGO_HEIGHT);
+
+        context.drawCenteredTextWithShadow(textRenderer, "§lCCraft Login", cx, logoY - 10, Theme.TEXT);
+
+        int lineY = logoY + LOGO_HEIGHT + 2;
+        context.fill(cx - 70, lineY, cx + 70, lineY + 1, Theme.BORDER);
+        context.fill(cx - 24, lineY + 1, cx + 24, lineY + 2, Theme.ACCENT);
+
+        // Labels
+        context.drawText(textRenderer, "Name",     fieldX, nameY - 11, Theme.TEXT_DIM, true);
+        context.drawText(textRenderer, "Passwort", fieldX, passY - 11, Theme.TEXT_DIM, true);
+
+        // Widgets (Felder + Buttons)
+        super.render(context, mouseX, mouseY, delta);
+
+        // Fehlermeldung — Platz ist eingeplant (errY), damit sie nicht abgeschnitten wird.
+        if (!errorMessage.isEmpty()) {
+            int color = busy ? Theme.TEXT_DIM : Theme.DANGER;
+            context.drawCenteredTextWithShadow(textRenderer, errorMessage, cx, errY, color);
+        }
+
+        context.drawText(textRenderer, "CCraft Login", 4, this.height - 12, Theme.TEXT_FAINT, true);
+    }
+
+    /** Weich leuchtender Akzent-Schein hinter dem Panel. */
+    private void drawGlow(DrawContext context) {
+        int glow = (CraftConfig.accent & 0xFFFFFF) | 0x33000000;
+        context.fillGradient(panelX - 20, panelY - 20, panelX + panelW + 20, panelY,
+                glow, 0x00000000);
+        context.fillGradient(panelX - 20, panelY + panelH, panelX + panelW + 20, panelY + panelH + 20,
+                0x00000000, glow);
+    }
+
+    /** Langsam aufsteigende Akzent-Partikel. */
+    private void drawParticles(DrawContext context) {
+        int color = (CraftConfig.accent & 0xFFFFFF) | 0x66000000;
         for (int i = 0; i < PARTICLES; i++) {
             px[i] += pvx[i];
             py[i] += pvy[i];
             if (py[i] < -5) {
-                py[i] = height + 5;
-                px[i] = random.nextFloat() * width;
+                py[i] = this.height + 5;
+                px[i] = (float) (Math.random() * this.width);
             }
-            if (px[i] < -5) px[i] = width + 5;
-            if (px[i] > width + 5) px[i] = -5;
-            g.fill((int) px[i], (int) py[i], (int) px[i] + psize[i], (int) py[i] + psize[i], particleColor);
+            if (px[i] < -5) px[i] = this.width + 5;
+            if (px[i] > this.width + 5) px[i] = -5;
+            int s = Math.round(psize[i]);
+            context.fill((int) px[i], (int) py[i], (int) px[i] + s, (int) py[i] + s, color);
         }
-        int glow = Theme.alpha(0x33, Theme.ACCENT);
-        g.fillGradient(panelX - 20, panelY - 20, panelX + panelW + 20, panelY, 0x00000000, glow);
-        g.fillGradient(panelX - 20, panelY + 172, panelX + panelW + 20, panelY + 192, glow, 0x00000000);
-        Theme.panel(g, panelX, panelY, panelW, 172);
-        g.fill(panelX + 1, panelY + 1, panelX + panelW - 1, panelY + 3, Theme.ACCENT);
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
-        super.extractRenderState(g, mouseX, mouseY, delta);
-        int cx = width / 2;
-        int logoH = Logos.draw(g, cx - LOGO_WIDTH / 2, logoY, LOGO_WIDTH);
-        int lineY = logoY + logoH + 2;
-        g.fill(cx - 70, lineY, cx + 70, lineY + 1, Theme.BORDER);
-        g.fill(cx - 24, lineY + 1, cx + 24, lineY + 2, Theme.ACCENT);
-        g.text(font, "Name", fieldX, nameY - 11, Theme.TEXT_DIM, true);
-        g.text(font, "Passwort", fieldX, passwordY - 11, Theme.TEXT_DIM, true);
-        if (!message.isEmpty()) g.centeredText(font, message, cx, buttonY + 48, busy ? Theme.TEXT_DIM : Theme.DANGER);
-        g.text(font, "CCraft Login", 4, height - 12, Theme.TEXT_FAINT, true);
-    }
-
-    @Override
-    public boolean shouldCloseOnEsc() {
-        return false;
-    }
-
-    @Override
-    public boolean isPauseScreen() {
-        return false;
-    }
+    public boolean shouldPause() { return false; }
 }

@@ -1,22 +1,23 @@
 {
   "required": true,
-  "package": "de.consolecrafter.ccraft.mixin",
+  "package": "de.consolecrafter.ccraft.mixins",
   "compatibilityLevel": "JAVA_21",
+  "mixins": [],
   "client": [
-    "AbstractButtonMixin",
-    "BrandPayloadMixin",
-    "CameraMixin",
-    "ClientboundExplodePacketMixin",
-    "ClientPacketListenerMixin",
+    "TitleScreenMixin",
+    "ScreenMixin",
     "ConnectScreenMixin",
     "DisconnectedScreenMixin",
-    "LightmapMixin",
-    "MinecraftAccessor",
-    "MinecraftMixin",
-    "OnlineServerEntryMixin",
-    "ScreenMixin",
-    "StringDecomposerMixin",
-    "TitleScreenMixin"
+    "MultiplayerServerEntryMixin",
+    "ClientBrandMixin",
+    "SodiumOptionsEscMixin",
+    "ButtonMixin",
+    "FullbrightMixin",
+    "FastPlaceMixin",
+    "ParticlePacketMixin",
+    "OutlineColorMixin",
+    "ChatHudMixin",
+    "PlayerListHudMixin"
   ],
   "injectors": {
     "defaultRequire": 1

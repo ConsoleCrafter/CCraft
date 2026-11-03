@@ -1,5 +1,16 @@
 {
-  "key.category.ccraft.main": "CCraft",
-  "key.ccraft.menu": "CCraft-Menü",
-  "key.ccraft.zoom": "Zoom"
+  "key.category.ccraft.cheats": "CCraft Cheats",
+  "key.ccraft.toggle_command_menu": "CCraft-Menü",
+  "key.ccraft.cheat.aimer": "Cheat: AimEr",
+  "key.ccraft.cheat.flight": "Cheat: Flight",
+  "key.ccraft.cheat.speed": "Cheat: Speed",
+  "key.ccraft.cheat.nofall": "Cheat: NoFall",
+  "key.ccraft.cheat.scaffold": "Cheat: Scaffold",
+  "key.ccraft.cheat.fastplace": "Cheat: FastPlace",
+  "key.ccraft.cheat.fullbright": "Cheat: Fullbright",
+  "key.ccraft.cheat.playeresp": "Cheat: PlayerESP",
+  "key.ccraft.cheat.chestesp": "Cheat: ChestESP",
+  "key.ccraft.cheat.antiparticlecrash": "AntiParticleCrash",
+  "key.ccraft.cheat.autototem": "Cheat: AutoTotem",
+  "key.ccraft.cheat.nameprotect": "NameProtect"
 }
